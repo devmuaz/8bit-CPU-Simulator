@@ -135,7 +135,6 @@ class ClockModule extends StatelessWidget {
               ),
               child: Slider(
                 value: _speedIndex(speed).toDouble(),
-                min: 0,
                 max: (speeds.length - 1).toDouble(),
                 divisions: speeds.length - 1,
                 onChanged: (position) =>
