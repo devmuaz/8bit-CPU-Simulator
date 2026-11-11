@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 
@@ -6,6 +8,28 @@ import '../painters/shapes/hardware_tick_mark_shape.dart';
 import '../painters/shapes/hardware_track_shape.dart';
 
 class ClockModule extends StatelessWidget {
+  /// Selectable clock speeds in Hz, on a 1-2-5 log scale.
+  static const List<double> speeds = [
+    0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+
+  /// Index into [speeds] closest to [hz], measured on a log scale.
+  static int _speedIndex(double hz) {
+    int best = 0;
+    for (int i = 1; i < speeds.length; i++) {
+      if ((math.log(speeds[i]) - math.log(hz)).abs() <
+          (math.log(speeds[best]) - math.log(hz)).abs()) {
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  static String _formatSpeed(double hz) {
+    if (hz >= 1000) return '${(hz / 1000).toStringAsFixed(0)} kHz';
+    if (hz < 1) return '$hz Hz';
+    return '${hz.toStringAsFixed(0)} Hz';
+  }
+
   final bool clockHigh;
   final bool isRunning;
   final double speed;
@@ -78,7 +102,7 @@ class ClockModule extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
-                    '(${speed.toStringAsFixed(1)} Hz)',
+                    '(${_formatSpeed(speed)})',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),
@@ -110,11 +134,12 @@ class ClockModule extends StatelessWidget {
                     : Colors.red.withValues(alpha: 0.3),
               ),
               child: Slider(
-                value: speed,
-                min: 0.5,
-                max: 100,
-                divisions: 19,
-                onChanged: onSpeedChanged,
+                value: _speedIndex(speed).toDouble(),
+                min: 0,
+                max: (speeds.length - 1).toDouble(),
+                divisions: speeds.length - 1,
+                onChanged: (position) =>
+                    onSpeedChanged(speeds[position.round()]),
               ),
             ),
           ),

@@ -56,7 +56,7 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
   // Clock
   Timer? clockTimer;
   bool isRunning = false;
-  double clockSpeed = 10.0;
+  double clockSpeed = 2.0;
   bool manualMode = false;
 
   // Animation
@@ -115,24 +115,31 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
     });
   }
 
+  // Timers cannot fire reliably faster than about one frame, so at high
+  // speeds each timer tick runs several clock edges.
+  static const int _minTickMicros = 16000;
+
   void _runClock() {
+    final int halfPeriodMicros = (500000 / clockSpeed).round();
+    final int edgesPerTick = (_minTickMicros / halfPeriodMicros).ceil();
     clockTimer = Timer.periodic(
-      Duration(milliseconds: (500 / clockSpeed).round()),
-      (_) => _clockPulse(),
+      Duration(microseconds: halfPeriodMicros * edgesPerTick),
+      (_) => _clockPulse(edgesPerTick),
     );
   }
 
-  void _clockPulse() {
-    if (haltFlag) {
-      clockTimer?.cancel();
-      isRunning = false;
-      return;
-    }
-
+  void _clockPulse(int edges) {
     setState(() {
-      clockHigh = !clockHigh;
-      if (!clockHigh) {
-        _executeStep();
+      for (int i = 0; i < edges; i++) {
+        if (haltFlag) {
+          clockTimer?.cancel();
+          isRunning = false;
+          return;
+        }
+        clockHigh = !clockHigh;
+        if (!clockHigh) {
+          _executeStep();
+        }
       }
     });
   }
