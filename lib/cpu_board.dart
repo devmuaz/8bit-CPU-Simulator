@@ -53,6 +53,9 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
   // RAM (16 bytes - 4-bit addressing)
   List<int> ram = List.filled(16, 0);
 
+  // Last assembled program, written back into RAM on reset
+  List<int> loadedProgram = const [];
+
   // Clock
   Timer? clockTimer;
   bool isRunning = false;
@@ -86,14 +89,16 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
     _onLoadProgram();
   }
 
+  /// Loads [program] into RAM and remembers it for reset. Without an
+  /// argument, reloads the last program, undoing any writes made while it ran.
   void _onLoadProgram([List<int>? program]) {
-    _clearRam();
+    if (program != null) {
+      loadedProgram = List.of(program);
+    }
 
-    if (program != null && program.isNotEmpty) {
-      for (int i = 0; i < program.length && i < ram.length; i++) {
-        ram[i] = program[i];
-      }
-      return;
+    _clearRam();
+    for (int i = 0; i < loadedProgram.length && i < ram.length; i++) {
+      ram[i] = loadedProgram[i];
     }
   }
 
@@ -430,8 +435,7 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
       controlWord = 0;
 
       _onClearControlSignals();
-      _clearRam();
-      _onLoadProgram();
+      _onLoadProgram(); // restart the loaded program rather than wiping RAM
     });
   }
 
