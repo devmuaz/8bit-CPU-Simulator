@@ -55,6 +55,7 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
 
   // Clock
   Timer? clockTimer;
+  Timer? singleStepTimer; // pending falling edge of a manual step
   bool isRunning = false;
   double clockSpeed = 10.0;
   bool manualMode = false;
@@ -100,6 +101,7 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
   @override
   void dispose() {
     clockTimer?.cancel();
+    singleStepTimer?.cancel();
     busAnimationController.dispose();
     super.dispose();
   }
@@ -138,17 +140,21 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
   }
 
   void _onClockSingleStep() {
-    if (!haltFlag) {
+    // Ignore presses while the previous step is still pending, otherwise a
+    // double press runs two steps back to back.
+    if (haltFlag || singleStepTimer != null) return;
+
+    setState(() {
+      clockHigh = true;
+    });
+    singleStepTimer = Timer(const Duration(milliseconds: 100), () {
+      singleStepTimer = null;
+      if (!mounted) return;
       setState(() {
-        clockHigh = true;
+        clockHigh = false;
+        _executeStep();
       });
-      Timer(const Duration(milliseconds: 100), () {
-        setState(() {
-          clockHigh = false;
-          _executeStep();
-        });
-      });
-    }
+    });
   }
 
   void _executeStep() {
@@ -412,6 +418,8 @@ class _CPUBoardState extends State<CPUBoard> with TickerProviderStateMixin {
   void _onReset() {
     setState(() {
       clockTimer?.cancel();
+      singleStepTimer?.cancel();
+      singleStepTimer = null;
       isRunning = false;
       bus = 0;
       busActive = false;
